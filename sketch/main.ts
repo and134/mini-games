@@ -1,57 +1,92 @@
-import P5 from "p5";
-
+import P5, { Color } from "p5";
+const wins = [
+  //diagonal
+  [
+    [0, 0],
+    [1, 1],
+    [2, 2]
+  ],
+  [
+    [0, 2],
+    [1, 1],
+    [2, 0]
+  ],
+  //row
+  [
+    [0, 0],
+    [0, 1],
+    [0, 2]
+  ],
+  [
+    [1, 0],
+    [1, 1],
+    [1, 2]
+  ],
+  [
+    [2, 0],
+    [2, 1],
+    [2, 2]
+  ],
+  //col
+  [
+    [0, 0],
+    [1, 0],
+    [2, 0]
+  ],
+  [
+    [0, 1],
+    [1, 1],
+    [2, 1]
+  ],
+  [
+    [0, 2],
+    [1, 2],
+    [2, 2]
+  ]
+];
 const gameOver = board => {
-  const wins = [
-    //diagonal
-    [
-      [0, 0],
-      [1, 1],
-      [2, 2]
-    ],
-    [
-      [0, 2],
-      [1, 1],
-      [2, 0]
-    ],
-    //row
-    [
-      [0, 0],
-      [0, 1],
-      [0, 2]
-    ],
-    [
-      [1, 0],
-      [1, 1],
-      [1, 2]
-    ],
-    [
-      [2, 0],
-      [2, 1],
-      [2, 2]
-    ],
-    //col
-    [
-      [0, 0],
-      [1, 0],
-      [2, 0]
-    ],
-    [
-      [0, 1],
-      [1, 1],
-      [2, 1]
-    ],
-    [
-      [0, 2],
-      [1, 2],
-      [2, 2]
-    ]
-  ];
   return wins.find(
     positions =>
       positions.filter(([c, r]) => board[c][r] == "X").length == 3 ||
       positions.filter(([c, r]) => board[c][r] == "O").length == 3
   );
 };
+
+const aiMove = (board, myPiece, enemyPiece) => {
+  const enemy= wins.find(
+    positions =>
+      positions.filter(([c, r]) => board[c][r] == enemyPiece).length >= 1 &&
+      positions.filter(([c, r]) => board[c][r] == '').length == 1
+  );
+  if (enemy) { 
+    const move = enemy.find(([c, r]) => board[c][r] == '') 
+    console.log("Ban enemy", move)
+    return move
+  }
+
+  const myMove = wins.find(
+    positions =>
+      positions.filter(([c, r]) => board[c][r] == myPiece).length > 0 &&
+      positions.filter(([c, r]) => board[c][r] == enemyPiece).length == 0
+  );
+  
+  if (myMove) { 
+    const move = myMove.find(([c, r]) => board[c][r] == '') 
+    console.log("My best", myMove, move)
+    return move
+  }
+
+  const avail = board.reduce((sum, line, row) => {
+    return line.reduce((lsum, val, col) =>
+      val == '' ? [...lsum, [col, row]] : lsum
+    , sum)
+  }, [])
+
+  const nextPos = Math.floor(Math.random() * avail.length)
+  console.log("Next random:", avail[nextPos])
+
+  return avail[nextPos]
+}
 
 const main = (p: P5) => {
   let board = [
@@ -84,7 +119,19 @@ const main = (p: P5) => {
         board[cellCol][cellRow] = players[currentPlayer];
         winLine = gameOver(board);
         currentPlayer = (currentPlayer + 1) % 2;
-        if (winLine) {
+        if (!winLine && currentPlayer == 1){
+          const nextPos = aiMove(board, "O", "X")
+          if (nextPos) {
+            board[nextPos[0]][nextPos[1]] = "O"
+            winLine = gameOver(board);
+            currentPlayer = (currentPlayer + 1) % 2;
+          } else {
+            button.html(`<h1>Withdraw. Play again!</h1>`)  
+            button.show()
+            winLine = []
+          }
+        }
+        if (winLine && winLine.length) {
           console.log("WinLine", winLine[0][0])
           button.html(`<h1>Winner is ${board[winLine[0][0]][winLine[0][1]]}</h1>`)
           button.show()
@@ -136,7 +183,7 @@ const main = (p: P5) => {
     }
     p.pop();
 
-    if (winLine) {
+    if (winLine && winLine.length) {
       const cellSize = width / 3;
       const startPoint = [
         winLine[0][1] * cellSize + cellSize / 2,
